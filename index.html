@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RehireYou - Germany Layoff Tracker</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1400px; margin: auto; padding: 20px; background: #f8f9fa; color: #333; }
+        h1 { text-align: center; color: #1a73e8; margin-bottom: 10px; }
+        .hero { text-align: center; background: linear-gradient(135deg, #1a73e8, #34a853); color: white; padding: 40px; border-radius: 12px; margin-bottom: 30px; }
+        .hero h2 { margin: 0; font-size: 2.5em; }
+        .hero p { font-size: 1.2em; opacity: 0.9; }
+        #chartContainer { height: 400px; margin: 30px 0; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #layoffsTable { width: 100% !important; font-size: 0.95em; }
+        #layoffsTable th, #layoffsTable td { white-space: normal; word-wrap: break-word; }
+        #layoffsTable a { color: #1a73e8; text-decoration: underline; }
+        #layoffsTable a:hover { color: #0d47a1; }
+        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter { margin-bottom: 15px; }
+        footer { text-align: center; margin-top: 50px; padding: 20px; background: #333; color: white; border-radius: 8px; }
+        @media (max-width: 992px) { #layoffsTable { font-size: 0.85em; } }
+        @media (max-width: 768px) { .hero h2 { font-size: 1.8em; } #chartContainer { height: 300px; } }
+    </style>
+    <!-- Free CDNs -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="hero">
+        <h2>RehireYou.com</h2>
+        <p>Germany Layoff Tracker • Rehire Resources • User Stories</p>
+    </div>
+
+    <h1>Germany Layoff Statistics (Live)</h1>
+    <p style="text-align: center; font-size: 1.1em;">Search any column. Data from public sources. <strong>Submit your story → contact@rehireyou.com</strong></p>
+
+    <div id="chartContainer">
+        <canvas id="layoffChart"></canvas>
+    </div>
+
+    <table id="layoffsTable" class="display responsive nowrap" style="width:100%">
+        <thead></thead>
+        <tbody></tbody>
+    </table>
+
+    <footer>
+        <p>&copy; 2025 RehireYou.com | 
+           <a href="mailto:contact@rehireyou.com" style="color: #1a73e8;">Submit Story</a> | 
+           <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQehY8Fe31sx6g6dLmcjboeW7impIUJveg8mo0sxVTBt15w-ekLAmy-XQjltLfYlpydaPj7V8NIs2bA/pub?gid=0&single=true&output=csv" target="_blank" style="color: #1a73e8;">View Raw Data</a>
+        </p>
+    </footer>
+
+    <script>
+        // === REPLACE WITH YOUR GOOGLE SHEET CSV URL ===
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQehY8Fe31sx6g6dLmcjboeW7impIUJveg8mo0sxVTBt15w-ekLAmy-XQjltLfYlpydaPj7V8NIs2bA/pub?gid=0&single=true&output=csv';
+        // =================================================
+
+        Papa.parse(CSV_URL, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                const tableData = results.data.filter(row => row.Company && row['Layoff Date']);
+
+                // === 11 Columns with Clickable Links ===
+                const columns = [
+                    { data: 'Rank', title: 'Rank', type: 'num', width: '5%' },
+                    { data: 'Company', title: 'Company', width: '12%' },
+                    { data: 'Layoff Date', title: 'Date', type: 'date', width: '10%' },
+                    { data: 'Affected Numbers', title: 'Affected', type: 'num', width: '8%' },
+                    { data: 'Affected Fields', title: 'Fields', width: '12%' },
+                    { data: 'City', title: 'City', width: '8%' },
+                    { data: 'State', title: 'State', width: '8%' },
+                    { data: 'Industry', title: 'Industry', width: '10%' },
+                    { 
+                        data: 'Rehire Resources', 
+                        title: 'Rehire', 
+                        width: '10%',
+                        render: function(data) {
+                            if (!data || data.trim() === '') return '-';
+                            const url = data.startsWith('http') ? data : 'https://' + data;
+                            return `<a href="${url}" target="_blank" rel="noopener">Jobs →</a>`;
+                        }
+                    },
+                    { data: 'User Stories', title: 'Stories', width: '12%' },
+                    { 
+                        data: 'News Source', 
+                        title: 'Source', 
+                        width: '10%',
+                        render: function(data) {
+                            if (!data || data.trim() === '') return '-';
+                            const url = data.startsWith('http') ? data : 'https://' + data;
+                            return `<a href="${url}" target="_blank" rel="noopener">News →</a>`;
+                        }
+                    }
+                ];
+
+                const table = $('#layoffsTable').DataTable({
+                    data: tableData,
+                    columns: columns,
+                    pageLength: 25,
+                    order: [[2, 'desc']], // Newest date first
+                    responsive: true,
+                    autoWidth: false,
+                    columnDefs: [
+                        { targets: [0, 3], className: 'dt-center' },
+                        { targets: '_all', className: 'dt-left' }
+                    ]
+                });
+
+                // === Top 10 Companies Chart ===
+                const companySums = {};
+                tableData.forEach(row => {
+                    const company = row.Company || 'Unknown';
+                    const num = parseInt(row['Affected Numbers']) || 0;
+                    if (num > 0) companySums[company] = (companySums[company] || 0) + num;
+                });
+
+                const sorted = Object.entries(companySums)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 10);
+
+                const labels = sorted.map(([c]) => c.length > 15 ? c.substring(0,15)+'...' : c);
+                const dataChart = sorted.map(([,n]) => n);
+
+                new Chart(document.getElementById('layoffChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Total Affected',
+                            data: dataChart,
+                            backgroundColor: 'rgba(26, 115, 232, 0.7)',
+                            borderColor: 'rgba(26, 115, 232, 1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: window.innerWidth < 768 ? 'y' : 'x',
+                        scales: { y: { beginAtZero: true } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: ctx => `${ctx.raw} affected` } }
+                        }
+                    }
+                });
+            },
+            error: function(err) {
+                document.body.innerHTML += `<p style="color:red; text-align:center;">Error loading data. Check CSV URL or commas in Sheet.</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
